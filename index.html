@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DMPS ライブチャット分析ギャラリー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#07080d;--panel:#0e1018;--line:#1d2030;--txt:#e8eaf2;--dim:#8389a3;--faint:#565d76;--cyan:#16e0e0;--mag:#ff2d8a;--gold:#ffcf3f}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--txt);font-family:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  .topbar{display:flex;align-items:center;gap:16px;padding:16px 24px;border-bottom:2px solid var(--line);flex-shrink:0;background:linear-gradient(90deg,rgba(22,224,224,.06),transparent)}
+  .brand{font-family:"Bebas Neue",sans-serif;font-size:26px;letter-spacing:.04em;line-height:1}
+  .brand small{display:block;font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.3em;color:var(--cyan);margin-top:3px}
+  .count{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--faint)}
+  .main{flex:1;display:flex;min-height:0}
+  .rail{width:280px;flex-shrink:0;border-right:1px solid var(--line);overflow-y:auto;padding:14px}
+  .rail h3{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.25em;color:var(--faint);text-transform:uppercase;margin:6px 10px 12px}
+  .tab{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:10px;cursor:pointer;transition:.15s;color:var(--txt)}
+  .tab:hover{border-color:var(--cyan);transform:translateY(-1px)}
+  .tab.active{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan) inset;background:rgba(22,224,224,.06)}
+  .tab .tt{font-size:13px;font-weight:700;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .tab .meta{display:flex;gap:12px;margin-top:8px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--dim)}
+  .tab .meta .c{color:var(--cyan)}
+  .tab .date{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--faint);margin-top:5px}
+  .stage{flex:1;min-width:0;position:relative;background:#000}
+  iframe{width:100%;height:100%;border:0;display:block}
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:40px;color:var(--dim)}
+  .empty .big{font-family:"Bebas Neue",sans-serif;font-size:34px;color:var(--faint);margin-bottom:12px}
+  .empty code{font-family:"JetBrains Mono",monospace;background:var(--panel);border:1px solid var(--line);padding:3px 8px;border-radius:6px;color:var(--cyan);font-size:12px}
+  @media(max-width:760px){
+    .main{flex-direction:column}
+    .rail{width:100%;height:auto;max-height:38vh;border-right:0;border-bottom:1px solid var(--line);display:flex;gap:10px;overflow-x:auto;flex-wrap:nowrap}
+    .rail h3{display:none}
+    .tab{min-width:220px;margin-bottom:0}
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">FAN PULSE<small>DMPS LIVE CHAT ANALYTICS</small></div>
+    <div class="count" id="count"></div>
+  </div>
+  <div class="main">
+    <nav class="rail">
+      <h3>Reports</h3>
+      <div id="tabs"></div>
+    </nav>
+    <div class="stage" id="stage">
+      <div class="empty"><div class="big">NO REPORTS YET</div>
+        <p>GitHub Actions の「Run workflow」でURLを入れると<br>ここにレポートが追加されます。</p></div>
+    </div>
+  </div>
+
+<script>
+(async () => {
+  let reports = [];
+  try {
+    const res = await fetch('reports.json', {cache:'no-store'});
+    reports = await res.json();
+  } catch(e) { reports = []; }
+
+  const tabsEl = document.getElementById('tabs');
+  const stage  = document.getElementById('stage');
+  const countEl= document.getElementById('count');
+  countEl.textContent = reports.length + ' reports';
+
+  if (!reports.length) return;
+
+  function show(r, btn){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    stage.innerHTML = '<iframe src="'+r.file+'" title="'+(r.title||'')+'"></iframe>';
+    if (history.replaceState) history.replaceState(null,'','#'+r.id);
+  }
+
+  reports.forEach((r,i)=>{
+    const b = document.createElement('button');
+    b.className = 'tab';
+    b.innerHTML =
+      '<div class="tt">'+ (r.title||r.id) +'</div>'+
+      '<div class="meta"><span class="c">'+ (r.total||0).toLocaleString() +'</span>コメント'+
+      '<span>'+ (r.dur||'') +'</span></div>'+
+      '<div class="date">'+ (r.date||'') +' · '+ r.id +'</div>';
+    b.onclick = ()=>show(r,b);
+    tabsEl.appendChild(b);
+  });
+
+  // ハッシュ指定があればそれを、無ければ先頭を開く
+  const hash = location.hash.replace('#','');
+  const idx = Math.max(0, reports.findIndex(r=>r.id===hash));
+  const first = document.querySelectorAll('.tab')[idx] || document.querySelector('.tab');
+  show(reports[idx]||reports[0], first);
+})();
+</script>
+</body>
+</html>
