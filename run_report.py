@@ -16,10 +16,23 @@ from datetime import datetime, timezone
 
 # ---------- 0. 引数 ----------
 if len(sys.argv) < 2:
-    print("使い方: python3 run_report.py \"<YouTube URL>\""); sys.exit(1)
+    print("使い方: python3 run_report.py \"<YouTube URL>\" [カテゴリ]"); sys.exit(1)
 URL = sys.argv[1]
 m = re.search(r'(?:v=|youtu\.be/|/live/)([\w-]{11})', URL)
 VID = m.group(1) if m else "video"
+
+# ===== 配信シリーズ分類 =====
+# (表示名, タイトルに含まれていたらそのシリーズと判定するキーワード群)
+# 新しいシリーズが増えたらここに1行足すだけ。
+SERIES_RULES = [
+    ("デュエプレ魂",   ["デュエプレ魂", "デュエプレ!!魂", "デュエプレ！！魂"]),
+    ("バトルアリーナ", ["バトルアリーナ"]),
+]
+def infer_category(title):
+    for cat, kws in SERIES_RULES:
+        if any(k in title for k in kws):
+            return cat
+    return "その他"
 
 try:
     from janome.tokenizer import Tokenizer
@@ -44,6 +57,10 @@ title = VID
 if os.path.exists(info_path):
     try: title = json.load(open(info_path, encoding="utf-8")).get("title", VID)
     except Exception: pass
+
+# 第2引数で明示指定があればそれを、なければタイトルから自動判定
+EXPLICIT_CAT = sys.argv[2].strip() if len(sys.argv) > 2 and sys.argv[2].strip() else None
+CATEGORY = EXPLICIT_CAT or infer_category(title)
 
 # ---------- 2. パース ----------
 print("[2/4] パース中…")
@@ -228,7 +245,8 @@ out = os.path.join(os.getcwd(), f"report_{VID}.html")
 open(out, "w", encoding="utf-8").write(doc)
 
 # ギャラリー用メタ(これを build_index.py が集約する)
-meta = {"id": VID, "title": title, "total": total, "uniq": uniq, "dur": dur,
+meta = {"id": VID, "title": title, "category": CATEGORY,
+        "total": total, "uniq": uniq, "dur": dur,
         "peak_min": peak_min, "pos": pos, "neg": neg,
         "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "file": os.path.basename(out)}
@@ -236,4 +254,4 @@ open(os.path.join(os.getcwd(), f"{VID}.meta.json"), "w", encoding="utf-8").write
     json.dumps(meta, ensure_ascii=False))
 
 print(f"\n✅ 完成: {out}")
-print(f"   {total}コメント / {uniq}人 / 配信長{dur}")
+print(f"   {total}コメント / {uniq}人 / 配信長{dur} / 分類:{CATEGORY}")

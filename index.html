@@ -18,6 +18,9 @@
   .main{flex:1;display:flex;min-height:0}
   .rail{width:280px;flex-shrink:0;border-right:1px solid var(--line);overflow-y:auto;padding:14px}
   .rail h3{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.25em;color:var(--faint);text-transform:uppercase;margin:6px 10px 12px}
+  .grp{margin-bottom:18px}
+  .grp-label{display:flex;align-items:center;gap:8px;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.12em;color:var(--cyan);margin:0 10px 9px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .grp-label .n{margin-left:auto;color:var(--faint);font-size:10px}
   .tab{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:10px;cursor:pointer;transition:.15s;color:var(--txt)}
   .tab:hover{border-color:var(--cyan);transform:translateY(-1px)}
   .tab.active{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan) inset;background:rgba(22,224,224,.06)}
@@ -50,7 +53,7 @@
     </nav>
     <div class="stage" id="stage">
       <div class="empty"><div class="big">NO REPORTS YET</div>
-        <p>GitHub Actions の「Run workflow」でURLを入れると<br>ここにレポートが追加されます。</p></div>
+        <p>ターミナルで <code style="font-family:'JetBrains Mono',monospace;color:#16e0e0">./publish.sh "URL"</code> を実行すると<br>ここにレポートが追加されます。</p></div>
     </div>
   </div>
 
@@ -69,6 +72,25 @@
 
   if (!reports.length) return;
 
+  // カテゴリが無い古いレポート用の保険: タイトルから推定(run_report.py と同じルール)
+  const SERIES_RULES = [
+    ['デュエプレ魂',   ['デュエプレ魂','デュエプレ!!魂','デュエプレ！！魂']],
+    ['バトルアリーナ', ['バトルアリーナ']],
+  ];
+  function cat(r){
+    if (r.category) return r.category;
+    const t = r.title || '';
+    for (const [c, kws] of SERIES_RULES) if (kws.some(k=>t.includes(k))) return c;
+    return 'その他';
+  }
+
+  // カテゴリ順にグループ化(SERIES_RULESの並び→その他 の順)
+  const order = SERIES_RULES.map(r=>r[0]).concat(['その他']);
+  const groups = {};
+  reports.forEach(r=>{ (groups[cat(r)] ||= []).push(r); });
+  const orderedCats = order.filter(c=>groups[c]).concat(
+    Object.keys(groups).filter(c=>!order.includes(c)));
+
   function show(r, btn){
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
     if (btn) btn.classList.add('active');
@@ -76,23 +98,37 @@
     if (history.replaceState) history.replaceState(null,'','#'+r.id);
   }
 
-  reports.forEach((r,i)=>{
-    const b = document.createElement('button');
-    b.className = 'tab';
-    b.innerHTML =
-      '<div class="tt">'+ (r.title||r.id) +'</div>'+
-      '<div class="meta"><span class="c">'+ (r.total||0).toLocaleString() +'</span>コメント'+
-      '<span>'+ (r.dur||'') +'</span></div>'+
-      '<div class="date">'+ (r.date||'') +' · '+ r.id +'</div>';
-    b.onclick = ()=>show(r,b);
-    tabsEl.appendChild(b);
+  let firstBtn=null, firstRep=null;
+  orderedCats.forEach(c=>{
+    const wrap = document.createElement('div'); wrap.className='grp';
+    const lbl = document.createElement('div'); lbl.className='grp-label';
+    lbl.innerHTML = c + '<span class="n">'+groups[c].length+'</span>';
+    wrap.appendChild(lbl);
+    groups[c].forEach(r=>{
+      const b = document.createElement('button');
+      b.className = 'tab';
+      b.innerHTML =
+        '<div class="tt">'+ (r.title||r.id) +'</div>'+
+        '<div class="meta"><span class="c">'+ (r.total||0).toLocaleString() +'</span>コメント'+
+        '<span>'+ (r.dur||'') +'</span></div>'+
+        '<div class="date">'+ (r.date||'') +' · '+ r.id +'</div>';
+      b.onclick = ()=>show(r,b);
+      wrap.appendChild(b);
+      if(!firstBtn){firstBtn=b;firstRep=r;}
+    });
+    tabsEl.appendChild(wrap);
   });
 
   // ハッシュ指定があればそれを、無ければ先頭を開く
   const hash = location.hash.replace('#','');
-  const idx = Math.max(0, reports.findIndex(r=>r.id===hash));
-  const first = document.querySelectorAll('.tab')[idx] || document.querySelector('.tab');
-  show(reports[idx]||reports[0], first);
+  const hit = reports.find(r=>r.id===hash);
+  if (hit){
+    const btns=[...document.querySelectorAll('.tab')];
+    const i=reports.indexOf(hit);
+    show(hit, btns.find(b=>b.innerHTML.includes(hit.id)) || firstBtn);
+  } else {
+    show(firstRep, firstBtn);
+  }
 })();
 </script>
 </body>
