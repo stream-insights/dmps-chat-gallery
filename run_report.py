@@ -156,7 +156,12 @@ ygrid = "".join(
     f'<text x="{PAD_L-8}" y="{PAD_T+ph-fr*ph+4:.1f}" class="ytick">{round(mx*fr)}</text>'
     for fr in (0, .25, .5, .75, 1))
 xticks = "".join(f'<text x="{X(i):.1f}" y="{Hh-8}" class="xtick">{i//60}h{i%60:02d}m</text>' for i in range(0, n, 30))
-dots = "".join(f'<circle cx="{X(p["min"]):.1f}" cy="{Y(series[p["min"]]):.1f}" r="4.5" class="pdot"/>' for p in peaks)
+dots = "".join(
+    f'<a href="https://www.youtube.com/watch?v={esc(VID)}&amp;t={p["min"]*60}s" target="_blank" rel="noopener noreferrer" class="pdotlink">'
+    f'<circle cx="{X(p["min"]):.1f}" cy="{Y(series[p["min"]]):.1f}" r="12" fill="transparent" pointer-events="all"/>'
+    f'<circle cx="{X(p["min"]):.1f}" cy="{Y(series[p["min"]]):.1f}" r="4.5" class="pdot"/>'
+    f'<title>{esc(p["time"])} · {p["count"]}/分（クリックで配信を開く）</title></a>'
+    for p in peaks)
 p1 = peaks[0]
 dots += f'<text x="{X(p1["min"]):.1f}" y="{Y(series[p1["min"]])-14:.1f}" class="plabel">{p1["time"]} · {p1["count"]}/分</text>'
 svg = f'''<svg viewBox="0 0 {W} {Hh}" class="ts" preserveAspectRatio="xMidYMid meet">
@@ -199,7 +204,7 @@ h1 .jp{font-family:"Zen Kaku Gothic New";font-weight:900;font-size:.42em;display
 .kpi .v{font-family:"Bebas Neue","Arial Narrow",sans-serif;font-size:52px;line-height:1;color:var(--accent)}.kpi .l{font-size:12px;color:var(--dim);margin-top:8px}
 section{margin-bottom:52px}.h2{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}.h2 .n{font-family:"Bebas Neue",sans-serif;font-size:24px;color:var(--faint)}.h2 h2{font-size:21px;font-weight:900}
 .sub{color:var(--dim);font-size:13.5px;margin-bottom:22px;max-width:80ch}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px}
-.ts{width:100%;height:auto;display:block}.ts .grid{stroke:rgba(255,255,255,.05)}.ts .ytick{fill:#565d76;font:11px monospace;text-anchor:end}.ts .xtick{fill:#565d76;font:10px monospace;text-anchor:middle}.ts .pdot{fill:#ff2d8a;stroke:#fff;stroke-width:1.4}.ts .plabel{fill:#ffcf3f;font:bold 12px monospace;text-anchor:middle}
+.ts{width:100%;height:auto;display:block}.ts .grid{stroke:rgba(255,255,255,.05)}.ts .ytick{fill:#565d76;font:11px monospace;text-anchor:end}.ts .xtick{fill:#565d76;font:10px monospace;text-anchor:middle}.ts .pdot{fill:#ff2d8a;stroke:#fff;stroke-width:1.4}.ts .plabel{fill:#ffcf3f;font:bold 12px monospace;text-anchor:middle}.ts a.pdotlink{cursor:pointer}.ts a.pdotlink:hover .pdot{stroke-width:2.8}
 .peaks{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.peak{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;position:relative}
 .ptop{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.peak .t{font-family:monospace;font-size:13px;color:var(--cyan);font-weight:700}.peak .cnt{font-family:"Bebas Neue",sans-serif;font-size:30px;color:var(--mag);line-height:.8}.peak .cnt small{font-size:.36em;color:var(--dim);font-family:monospace}
 .tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.tag{font-size:11px;font-family:monospace;background:rgba(22,224,224,.10);color:var(--cyan);border:1px solid rgba(22,224,224,.25);padding:3px 9px;border-radius:20px}
